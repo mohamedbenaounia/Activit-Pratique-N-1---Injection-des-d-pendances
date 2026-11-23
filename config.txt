@@ -1,0 +1,2 @@
+ma.mohamed.dao.daoImpl
+ma.mohamed.metier.metierImpl
