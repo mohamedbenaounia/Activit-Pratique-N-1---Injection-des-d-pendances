@@ -1,270 +1,140 @@
 # Activit-Pratique-N-1---Injection-des-d-pendances
-Compte rendu : Inversion de contrôle et injection des dépendances
+Ce projet Java illustre le couplage faible et l'injection des dépendances à travers une application simple composée d'une couche d'accès aux données (DAO) et d'une couche métier. Il montre l'évolution d'une injection faite à la main vers l'injection automatisée par le framework Spring.
 
-Nom et prénom : Mohamed Benaounia
-Module : Architecture JEE
-Année universitaire : 2026-2027
+Table des matières
+Objectifs
+Architecture
+Structure du projet
+Description des classes et fichiers
+Types d'injection des dépendances
+Technologies utilisées
+Exécution
+Auteur
+Objectifs
+Comprendre la différence entre couplage fort et couplage faible.
+Programmer avec des interfaces plutôt qu'avec des classes concrètes.
+Réaliser l'injection des dépendances de quatre façons différentes.
+Pouvoir changer d'implémentation sans modifier le code métier.
+Architecture
 
-Objectif
+L'application est organisée en deux couches. La couche métier ne connaît que l'interface de la couche DAO, jamais ses implémentations.
 
-Mettre en pratique le couplage faible et l'injection des dépendances en Java, selon trois approches :
+┌──────────────────┐        ┌──────────────────┐        ┌──────────────────┐
+│   Présentation   │ ─────► │      Métier      │ ─────► │       DAO        │
+│  (classes main)  │        │  imetier         │        │  idao            │
+│                  │        │  metierImpl      │        │  daoImpl         │
+│                  │        │                  │        │  daoImplV2       │
+└──────────────────┘        └──────────────────┘        └──────────────────┘
+                              dépend de l'interface       implémentations
+                              idao uniquement             interchangeables
 
-Instanciation statique
-Instanciation dynamique (réflexion)
-Framework Spring (version XML puis version annotations)
-
-Ressource suivie : https://www.youtube.com/watch?v=vOLqabN-n2k
+Fonctionnement : metierImpl.calcul() appelle dao.getData(), ajoute 5 au résultat et le retourne.
 
 Structure du projet
-src/main/java
-└── mohamed
-    ├── dao
-    │   ├── idao.java            (interface)
-    │   └── daoImpl.java         (implémentation V1)
-    ├── ext
-    │   └── daoImplV2.java       (implémentation V2, version web service)
-    ├── metier
-    │   ├── imetier.java         (interface)
-    │   └── metierImpl.java      (implémentation avec couplage faible)
-    └── pres
-        ├── Presentation1.java   (injection statique)
-        ├── Presentation2.java   (injection dynamique)
-        ├── Presentation3.java   (Spring XML)
-        └── Presentation4.java   (Spring annotations)
-src/main/resources
-├── config.txt                   (utilisé par l'injection dynamique)
-└── config.xml                   (utilisé par Spring XML)
-Partie 1
-1. Interface IDao
+Projet/
+├── pom.xml
+├── README.md
+├── config.txt                          (injection dynamique)
+└── src/
+    └── main/
+        ├── java/
+        │   └── mohamed/
+        │       ├── dao/
+        │       │   ├── idao.java           (interface DAO)
+        │       │   └── daoImpl.java        (implémentation V1 : base de données)
+        │       ├── ext/
+        │       │   └── daoImplV2.java      (implémentation V2 : web service)
+        │       ├── metier/
+        │       │   ├── imetier.java        (interface métier)
+        │       │   └── metierImpl.java     (implémentation métier)
+        │       └── pres/
+        │           ├── Presentation1.java  (injection statique)
+        │           ├── Presentation2.java  (injection dynamique)
+        │           ├── Presentation3.java  (Spring XML)
+        │           └── Presentation4.java  (Spring annotations)
+        └── resources/
+            └── config.xml                  (configuration Spring XML)
 
-L'interface déclare une seule méthode, getData, qui fournit la donnée.
+Adaptez cet arbre si les noms de vos classes ou de vos packages sont différents.
 
-java
-package mohamed.dao;
+Description des classes et fichiers
+Package mohamed.dao
+Fichier	Rôle
+idao	Interface de la couche DAO. Déclare la méthode double getData().
+daoImpl	Première implémentation. Simule la lecture de données depuis une base de données. Bean Spring d1.
+Package mohamed.ext
+Fichier	Rôle
+daoImplV2	Deuxième implémentation. Simule la récupération des données via un web service et retourne 20. Bean Spring d2.
+Package mohamed.metier
+Fichier	Rôle
+imetier	Interface de la couche métier. Déclare la méthode double calcul().
+metierImpl	Implémentation métier. Contient un attribut de type idao (couplage faible), un constructeur vide, un constructeur paramétré et un setter setDao(). calcul() retourne getData() + 5. Bean Spring metier.
+Package mohamed.pres
+Fichier	Rôle
+Presentation1	Teste l'injection par instanciation statique.
+Presentation2	Teste l'injection par instanciation dynamique.
+Presentation3	Teste Spring avec la configuration XML.
+Presentation4	Teste Spring avec les annotations.
+Fichiers de configuration
+Fichier	Rôle
+config.txt	Contient les noms complets des classes à instancier (une par ligne). Lu par Presentation2.
+config.xml	Déclare les beans d et metier et l'injection de d dans metier. Lu par Presentation3.
+pom.xml	Fichier Maven : dépendances du projet (Spring).
+Types d'injection des dépendances
+1. Instanciation statique
 
-public interface idao {
-    double getData();
-}
-2. Implémentation de IDao
+Les objets sont créés avec le mot-clé new directement dans le code, puis reliés avec le setter ou le constructeur.
 
-Première version (accès à une base de données) :
+Avantage : simple à comprendre.
+Inconvénient : pour changer d'implémentation, il faut modifier le code et recompiler.
+2. Instanciation dynamique
 
-java
-package mohamed.dao;
+Les noms des classes sont lus dans config.txt. Les objets sont créés par réflexion (Class.forName, newInstance) et la dépendance est injectée en appelant setDao par réflexion.
 
-import org.springframework.stereotype.Repository;
+Avantage : on change d'implémentation en modifiant seulement config.txt, sans recompilation.
+Inconvénient : le code de réflexion est lourd à écrire.
 
-@Repository("d1")
-public class daoImpl implements idao {
-    @Override
-    public double getData() {
-        System.out.println("Version base de données");
-        return 10;
-    }
-}
-
-Deuxième version (web service), placée dans le package mohamed.ext pour montrer qu'on peut changer d'implémentation sans modifier le métier :
-
-java
-package mohamed.ext;
-
-import mohamed.dao.idao;
-import org.springframework.stereotype.Repository;
-
-@Repository("d2")
-public class daoImplV2 implements idao {
-    @Override
-    public double getData() {
-        System.out.println("Version de web service");
-        return 20;
-    }
-}
-3. Interface IMetier
-java
-package mohamed.metier;
-
-public interface imetier {
-    double calcul();
-}
-4. Implémentation de IMetier avec couplage faible
-
-La classe métier ne dépend pas d'une implémentation concrète de idao, mais uniquement de l'interface. La dépendance lui est fournie de l'extérieur (constructeur ou setter).
-
-java
-package mohamed.metier;
-
-import mohamed.dao.idao;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Service;
-
-@Service("metier")
-public class metierImpl implements imetier {
-    @Autowired
-    @Qualifier("d2")
-    private idao dao;
-
-    public metierImpl() {}
-
-    public metierImpl(idao dao) { // constructeur paramétré
-        this.dao = dao;
-    }
-
-    public void setDao(idao dao) {
-        this.dao = dao;
-    }
-
-    @Override
-    public double calcul() {
-        double a = dao.getData();
-        return a + 5;
-    }
-}
-
-Le couplage est faible car pour changer de source de données, il suffit de fournir une autre implémentation de idao. Le code de metierImpl ne change pas.
-
-5. Injection des dépendances
-a. Par instanciation statique
-
-Les objets sont créés avec new dans le code. Changer d'implémentation oblige à modifier et recompiler le code.
-
-java
-package mohamed.pres;
-
-import mohamed.ext.daoImplV2;
-import mohamed.metier.metierImpl;
-
-public class Presentation1 {
-    public static void main(String[] args) {
-        daoImplV2 dao = new daoImplV2();
-        metierImpl metier = new metierImpl();
-        metier.setDao(dao); // injection via le setter
-        // ou : new metierImpl(dao) via le constructeur
-        System.out.println("Résultat = " + metier.calcul());
-    }
-}
-
-Résultat attendu :
-
-Version de web service
-Résultat = 25.0
-b. Par instanciation dynamique
-
-Les noms des classes sont lus dans un fichier config.txt. Les objets sont créés par réflexion, sans recompilation.
-
-config.txt :
+Exemple de config.txt :
 
 mohamed.ext.daoImplV2
 mohamed.metier.metierImpl
-java
-package mohamed.pres;
+3. Spring : version XML
 
-import mohamed.dao.idao;
-import mohamed.metier.imetier;
-
-import java.io.File;
-import java.lang.reflect.Method;
-import java.util.Scanner;
-
-public class Presentation2 {
-    public static void main(String[] args) throws Exception {
-        Scanner scanner = new Scanner(new File("config.txt"));
-        String daoClassName = scanner.nextLine();
-        Class<?> cDao = Class.forName(daoClassName);
-        idao dao = (idao) cDao.getDeclaredConstructor().newInstance();
-
-        String metierClassName = scanner.nextLine();
-        Class<?> cMetier = Class.forName(metierClassName);
-        imetier metier = (imetier) cMetier.getDeclaredConstructor().newInstance();
-
-        Method setDao = cMetier.getMethod("setDao", idao.class);
-        setDao.invoke(metier, dao); // injection par réflexion
-
-        System.out.println("Résultat = " + metier.calcul());
-    }
-}
-
-Pour passer de la V2 à la V1, il suffit de modifier la première ligne de config.txt.
-
-c. Avec le framework Spring
-Version XML
-
-config.xml :
+Les beans et leurs dépendances sont déclarés dans config.xml. Spring crée les objets et appelle le setter setDao() grâce à la balise <property>.
 
 xml
-<?xml version="1.0" encoding="UTF-8"?>
-<beans xmlns="http://www.springframework.org/schema/beans"
-       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
-    <bean id="d" class="mohamed.ext.daoImplV2"/>
-    <bean id="metier" class="mohamed.metier.metierImpl">
-        <property name="dao" ref="d"/>
-    </bean>
-</beans>
-java
-package mohamed.pres;
+<bean id="d" class="mohamed.ext.daoImplV2"/>
+<bean id="metier" class="mohamed.metier.metierImpl">
+    <property name="dao" ref="d"/>
+</bean>
+4. Spring : version annotations
 
-import mohamed.metier.imetier;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.support.ClassPathXmlApplicationContext;
+La configuration se fait directement dans le code avec des annotations :
 
-public class Presentation3 {
-    public static void main(String[] args) {
-        ApplicationContext context = new ClassPathXmlApplicationContext("config.xml");
-        imetier metier = (imetier) context.getBean("metier");
-        System.out.println("Résultat = " + metier.calcul());
-    }
-}
+Annotation	Utilisation
+@Repository("d2")	Déclare daoImplV2 comme bean DAO nommé d2.
+@Service("metier")	Déclare metierImpl comme bean métier nommé metier.
+@Autowired	Demande à Spring d'injecter la dépendance.
+@Qualifier("d2")	Choisit l'implémentation à injecter quand il y en a plusieurs.
+Comparaison
+Approche	Pour changer d'implémentation	Configuration
+Statique	Modifier le code et recompiler	Dans le code
+Dynamique	Modifier config.txt	Fichier texte
+Spring XML	Modifier config.xml	Fichier XML
+Spring annotations	Changer @Qualifier	Dans le code
+Technologies utilisées
+Java
+Spring Framework (spring-context)
+Maven
+IntelliJ IDEA
+Git et GitHub
+Exécution
+Cloner le dépôt :
+git clone <lien-du-repository>
+Ouvrir le projet dans IntelliJ IDEA et laisser Maven télécharger les dépendances.
+Lancer la méthode main de la classe Presentation1, Presentation2, Presentation3 ou Presentation4.
 
-La balise <property name="dao" ref="d"/> appelle le setter setDao pour injecter le bean d.
+Résultat attendu avec daoImplV2 :
 
-Version annotations
-
-Les annotations remplacent le fichier XML :
-
-@Repository("d2") sur daoImplV2 déclare le bean DAO.
-@Service("metier") sur metierImpl déclare le bean métier.
-@Autowired demande l'injection de la dépendance.
-@Qualifier("d2") choisit l'implémentation à injecter lorsqu'il y en a plusieurs.
-java
-package mohamed.pres;
-
-import mohamed.metier.imetier;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
-
-public class Presentation4 {
-    public static void main(String[] args) {
-        ApplicationContext context =
-                new AnnotationConfigApplicationContext("mohamed.ext", "mohamed.dao", "mohamed.metier");
-        imetier metier = context.getBean(imetier.class);
-        System.out.println("Résultat = " + metier.calcul());
-    }
-}
-Dépendances Maven
-xml
-<dependency>
-    <groupId>org.springframework</groupId>
-    <artifactId>spring-context</artifactId>
-    <version>6.1.x</version>
-</dependency>
-Comparaison des approches
-Approche	Changer d'implémentation	Avantage	Inconvénient
-Statique	Modifier le code et recompiler	Simple	Couplage fort dans la classe de présentation
-Dynamique	Modifier config.txt	Pas de recompilation	Code de réflexion à écrire
-Spring XML	Modifier config.xml	Configuration externe, code propre	Fichier XML verbeux
-Spring annotations	Changer le @Qualifier	Concis	Configuration dans le code
-Conclusion
-
-Le couplage faible, obtenu grâce aux interfaces, rend l'application ouverte à l'extension et fermée à la modification. L'injection des dépendances, d'abord réalisée à la main (statique, dynamique), est automatisée par Spring, qui gère la création et la liaison des objets.
-
-Historique de la séance
-
-Un commit et un push ont été effectués environ toutes les 30 minutes :
-
-Commit	Contenu
-1	Création du projet, interfaces idao et imetier
-2	Implémentations daoImpl, daoImplV2 et metierImpl
-3	Injection statique et dynamique
-4	Spring version XML
-5	Spring version annotations et README
+Version de web service
+Résultat = 25.0
